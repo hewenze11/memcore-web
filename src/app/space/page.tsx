@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 
@@ -28,7 +29,7 @@ interface Message { id: string; session_id: string; role: string; content: strin
 interface CoreDoc { id: string; title: string; content: string; trigger_desc: string; content_bytes: number; updated_at: string }
 interface DailyTopic { id: string; name: string; message_count: number }
 
-export default function SpacePage() {
+function SpacePage() {
   const params = useSearchParams()
   // P0-2 fix: 读取 admin 传来的 user_id（管理员查看某用户）
   const viewUserId = params?.get('user_id') || null
@@ -372,6 +373,15 @@ export default function SpacePage() {
         </div>
       )}
     </div>
+  )
+}
+
+// Next.js 要求 useSearchParams 必须在 Suspense 内
+export default function SpacePageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-amber-400">加载中...</div>}>
+      <SpacePage />
+    </Suspense>
   )
 }
 
