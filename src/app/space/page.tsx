@@ -14,7 +14,7 @@ function api(path: string, opts?: RequestInit) {
   })
 }
 
-function fmtBytes(b: number) {
+function fmtBytes(b?: number) {
   if (!b) return '0 B'
   if (b < 1024) return `${b} B`
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
