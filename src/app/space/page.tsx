@@ -2,16 +2,20 @@
 
 import { Suspense } from 'react'
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://172.236.254.239:31012'
-const TOKEN = 'memcore-test-token-m1-m5'
 const FREE_QUOTA = 10 * 1024 * 1024
+
+function getToken(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('mnemo_token') || 'memcore-test-token-m1-m5'
+}
 
 function api(path: string, opts?: RequestInit) {
   return fetch(`${API}${path}`, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}`, ...(opts?.headers || {}) },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}`, ...(opts?.headers || {}) },
   })
 }
 

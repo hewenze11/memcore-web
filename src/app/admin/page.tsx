@@ -4,7 +4,22 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://172.236.254.239:31012'
-const TOKEN = 'memcore-test-token-m1-m5'
+
+function getToken(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('mnemo_token') || 'memcore-test-token-m1-m5'
+}
+
+function api(path: string, opts?: RequestInit) {
+  return fetch(`${API}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getToken()}`,
+      ...(opts?.headers || {}),
+    },
+  })
+}
 
 interface UserRow {
   user_id: string
@@ -20,17 +35,6 @@ interface GlobalStats {
   total_messages: number
   total_summaries: number
   total_docs: number
-}
-
-function api(path: string, opts?: RequestInit) {
-  return fetch(`${API}${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${TOKEN}`,
-      ...(opts?.headers || {}),
-    },
-  })
 }
 
 function fmtBytes(b?: number) {
