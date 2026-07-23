@@ -1,0 +1,62 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [dev, main]
+
+env:
+  HARBOR_REGISTRY: 172.236.254.239:30880
+  HARBOR_PROJECT: memcore-web
+  IMAGE_NAME: memcore-web/frontend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Docker for insecure registry
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"insecure-registries": ["172.236.254.239:30880"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+
+      - name: Login to Harbor
+        run: |
+          echo "Harbor12345" | docker login 172.236.254.239:30880 -u admin --password-stdin
+
+      - name: Set image tag
+        id: tag
+        run: echo "tag=${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ github.ref_name == 'main' && 'http://172.236.254.239:31012' || 'http://172.236.254.239:31012' }} \
+            -t ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }} \
+            .
+
+      - name: Push to Harbor
+        run: docker push ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+
+      - name: Update k8s manifest
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            MANIFEST=k8s/dev/deployment.yaml
+          else
+            MANIFEST=k8s/prod/deployment.yaml
+          fi
+          sed -i "s|image: .*|image: ${{ env.HARBOR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}|" $MANIFEST
+          git config user.email "ci@memcore"
+          git config user.name "CI Bot"
+          git add $MANIFEST
+          git diff --staged --quiet || git commit -m "ci: update image to ${{ steps.tag.outputs.tag }}"
+          git push
+
+      - name: Notify Feishu
+        if: always()
+        run: |
+          STATUS=${{ job.status }}
+          curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/f5863f4d-4f8f-41e6-8361-ee3a16672099" \
+            -H "Content-Type: application/json" \
+            -d "{\"msg_type\":\"text\",\"content\":{\"text\":\"memcore-web [${{ github.ref_name }}] Build $STATUS | ${{ steps.tag.outputs.tag }}\"}}"

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memcore-web
+  namespace: dev-memcore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memcore-web
+  template:
+    metadata:
+      labels:
+        app: memcore-web
+    spec:
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: memcore-web
+          image: 172.236.254.239:30880/memcore-web/frontend:dev-placeholder
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memcore-web
+  namespace: dev-memcore
+spec:
+  type: NodePort
+  selector:
+    app: memcore-web
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 31010
